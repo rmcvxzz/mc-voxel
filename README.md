@@ -10,6 +10,8 @@ Simply, i am not affiliated with Sasha Koshka nor Mojang Studios.
 - Discord RPC
 - Audio (only clicking is there atm)
 - Player model (really experimental.)
+- External textures (for complex ones like logo)
+- OpenGL Renderer support
 - Multiplayer (experimental)
 
 ### Libraries used by TerraM4KC/M4KC:
