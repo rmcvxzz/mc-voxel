@@ -1,5 +1,6 @@
 #include "gl_renderer.h"
 #include "main.h"
+
 #include "gui.h"        /* BUFFER_W, BUFFER_H, BUFFER_SCALE, WINDOW_W, WINDOW_H */
 #include "gameloop.h"   /* gameLoop(), Inputs, world, player */
 #include "imgui_renderer.h"
@@ -43,6 +44,8 @@ static GLuint s_vbo  = 0;
 
 /* Raycaster shader program */
 static GLuint s_prog = 0;
+static GLuint s_raycastFBO = 0;
+static GLuint s_raycastTex = 0;
 
 /* World volume: R8UI 192^3 */
 static GLuint s_worldTex = 0;
@@ -71,8 +74,10 @@ static const char *BLIT_FRAG_SRC =
     "in vec2 vUV;\n"
     "out vec4 fragColor;\n"
     "uniform sampler2D uFrame;\n"
+    "uniform int uFlipY;\n"
     "void main() {\n"
-    "    fragColor = texture(uFrame, vUV);\n"
+    "    vec2 uv = uFlipY == 1 ? vec2(vUV.x, 1.0 - vUV.y) : vUV;\n"
+    "    fragColor = texture(uFrame, uv);\n"
     "}\n";
 
 /* -------------------------------------------------------------------------
@@ -135,6 +140,7 @@ static const char *FRAG_SRC =
     "uniform int    uMouseX;\n"
     "uniform int    uMouseY;\n"
     "uniform vec2   uResolution;\n"
+    "uniform int    uHighGfx;\n"
     "\n"
     "#define NUM_BLOCKS   16\n"
     "#define TEX_W        16\n"
@@ -172,6 +178,8 @@ static const char *FRAG_SRC =
     "    float bestDist = uDrawDist;\n"
     "    vec3  bestCol  = vec3(0.0);\n"
     "    int   bestFace = 0;\n"
+    "    int   bestSign = 1;\n"
+    "    ivec3 bestBp   = ivec3(0);\n"
     "\n"
     "    for (int blockFace = 0; blockFace < 3; blockFace++) {\n"
     "        float f27 = (blockFace == 0) ? f24 : (blockFace == 1) ? f23 : f25;\n"
@@ -236,6 +244,8 @@ static const char *FRAG_SRC =
     "                    bestDist = f33;\n"
     "                    bestCol  = col;\n"
     "                    bestFace = blockFace;\n"
+    "                    bestSign = f27 < 0.0 ? 1 : -1;\n"
+    "                    bestBp   = bp;\n"
     "                    break;\n"
     "                }\n"
     "            }\n"
@@ -251,6 +261,31 @@ static const char *FRAG_SRC =
     "        float pixelMist  = 255.0 - bestDist / uDrawDist * 255.0;\n"
     "        int   pixelShade = 255 - (bestFace + 2) % 3 * 50;\n"
     "        float shade = float(pixelShade) / 255.0;\n"
+    "\n"
+    "        if (uHighGfx == 1) {\n"
+    "            vec3 normal = vec3(0.0);\n"
+    "            if (bestFace == 0) normal.x = float(bestSign);\n"
+    "            else if (bestFace == 1) normal.y = float(bestSign);\n"
+    "            else normal.z = float(bestSign);\n"
+    "\n"
+    "            vec3 sunDir = normalize(vec3(0.5, 1.0, 0.3));\n"
+    "            float ndotl = max(dot(normal, sunDir), 0.0);\n"
+    "            float directional = 0.55 + 0.45 * ndotl;\n"
+    "\n"
+    "            ivec3 t1, t2;\n"
+    "            if (bestFace == 0)      { t1 = ivec3(0,1,0); t2 = ivec3(0,0,1); }\n"
+    "            else if (bestFace == 1) { t1 = ivec3(1,0,0); t2 = ivec3(0,0,1); }\n"
+    "            else                    { t1 = ivec3(1,0,0); t2 = ivec3(0,1,0); }\n"
+    "            ivec3 nrm = ivec3(normal);\n"
+    "\n"
+    "            int side1  = getBlock(bestBp + nrm + t1) != 0 ? 1 : 0;\n"
+    "            int side2  = getBlock(bestBp + nrm + t2) != 0 ? 1 : 0;\n"
+    "            int corner = getBlock(bestBp + nrm + t1 + t2) != 0 ? 1 : 0;\n"
+    "            float ao = 1.0 - float(side1 + side2 + corner) * 0.12;\n"
+    "\n"
+    "            shade *= directional * ao;\n"
+    "        }\n"
+    "\n"
     "        float mist;\n"
     "        if (uFogType == 1)\n"
     "            mist = sqrt(pixelMist / 255.0);\n"
@@ -366,6 +401,8 @@ static void upload_atlas(void) {
 extern World world; /* defined in gameloop.c */
 
 static void upload_world(void) {
+    static int s_debugLogged = 0;
+
     /* Centre the volume on the player's chunk */
     int pcx = (int)floor(world.player.pos.x / CHUNK_SIZE) - CHUNKARR_RAD;
     int pcy = (int)floor(world.player.pos.y / CHUNK_SIZE) - CHUNKARR_RAD;
@@ -377,9 +414,14 @@ static void upload_world(void) {
 
     memset(s_worldBuf, 0, sizeof(s_worldBuf));
 
+    int loadedChunks = 0;
+    int skippedOOB   = 0;
+    int nonAirBlocks  = 0;
+
     for (int ci = 0; ci < CHUNKARR_SIZE; ci++) {
         Chunk *ch = &world.chunk[ci];
         if (!ch->loaded || !ch->blocks) continue;
+        loadedChunks++;
 
         /* Chunk world-space origin */
         int wx = ch->center.x - CHUNK_SIZE / 2;
@@ -395,7 +437,7 @@ static void upload_world(void) {
         if (ox < 0 || oy < 0 || oz < 0 ||
             ox + CHUNK_SIZE > WORLD_TEX_SIZE ||
             oy + CHUNK_SIZE > WORLD_TEX_SIZE ||
-            oz + CHUNK_SIZE > WORLD_TEX_SIZE) continue;
+            oz + CHUNK_SIZE > WORLD_TEX_SIZE) { skippedOOB++; continue; }
 
         for (int bz = 0; bz < CHUNK_SIZE; bz++)
         for (int by = 0; by < CHUNK_SIZE; by++)
@@ -405,7 +447,17 @@ static void upload_world(void) {
                       (oy + by) * WORLD_TEX_SIZE +
                       (oz + bz) * WORLD_TEX_SIZE * WORLD_TEX_SIZE;
             s_worldBuf[idx] = b;
+            if (b != 0) nonAirBlocks++;
         }
+    }
+
+    if (!s_debugLogged) {
+        printf("[gl_renderer] upload_world: chunks=%d/%d loaded, %d skipped(OOB), "
+               "nonAirBlocks=%d, origin=(%d,%d,%d), playerPos=(%.1f,%.1f,%.1f)\n",
+               loadedChunks, CHUNKARR_SIZE, skippedOOB, nonAirBlocks,
+               s_originX, s_originY, s_originZ,
+               world.player.pos.x, world.player.pos.y, world.player.pos.z);
+        s_debugLogged = 1;
     }
 
     glBindTexture(GL_TEXTURE_3D, s_worldTex);
@@ -517,6 +569,33 @@ int gl_renderer_init(SDL_Window *window) {
                  GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glBindTexture(GL_TEXTURE_2D, 0);
 
+    /* Low-res raycaster render target - the raycast shader is expensive per
+     * pixel (up to 3 faces x 128 raymarch steps), so it renders into this
+     * BUFFER_W x BUFFER_H texture instead of the full window, then gets
+     * upscaled with a cheap GL_NEAREST blit. Rendering it directly at window
+     * resolution would run the raymarch ~16x more than necessary. */
+    glGenTextures(1, &s_raycastTex);
+    glBindTexture(GL_TEXTURE_2D, s_raycastTex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8,
+                 BUFFER_W, BUFFER_H, 0,
+                 GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glGenFramebuffers(1, &s_raycastFBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, s_raycastFBO);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                           GL_TEXTURE_2D, s_raycastTex, 0);
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        fprintf(stderr, "[gl_renderer] raycast FBO incomplete\n");
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        return 1;
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
     glViewport(0, 0, WINDOW_W, WINDOW_H);
     printf("[gl_renderer] init OK  world=%d^3  atlas=%dx%d\n",
            WORLD_TEX_SIZE, ATLAS_W, ATLAS_H);
@@ -528,6 +607,8 @@ void gl_renderer_quit(void) {
     if (s_worldTex)  { glDeleteTextures(1, &s_worldTex);  s_worldTex  = 0; }
     if (s_atlasTex)  { glDeleteTextures(1, &s_atlasTex);  s_atlasTex  = 0; }
     if (s_frameTex)  { glDeleteTextures(1, &s_frameTex);  s_frameTex  = 0; }
+    if (s_raycastTex) { glDeleteTextures(1, &s_raycastTex); s_raycastTex = 0; }
+    if (s_raycastFBO) { glDeleteFramebuffers(1, &s_raycastFBO); s_raycastFBO = 0; }
     if (s_vbo)       { glDeleteBuffers(1, &s_vbo);        s_vbo       = 0; }
     if (s_vao)       { glDeleteVertexArrays(1, &s_vao);   s_vao       = 0; }
     if (s_prog)      { glDeleteProgram(s_prog);            s_prog      = 0; }
@@ -617,6 +698,7 @@ int gl_renderer_frame(void *inputs_v) {
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, s_frameTex);
         glUniform1i(glGetUniformLocation(s_blitProg, "uFrame"), 0);
+        glUniform1i(glGetUniformLocation(s_blitProg, "uFlipY"), 0);
         glBindVertexArray(s_vao);
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindVertexArray(0);
@@ -697,13 +779,43 @@ int gl_renderer_frame(void *inputs_v) {
     glUniform1i(glGetUniformLocation(s_prog, "uTrapMouse"), options.trapMouse);
     glUniform1i(glGetUniformLocation(s_prog, "uMouseX"),    inputs->mouse.x);
     glUniform1i(glGetUniformLocation(s_prog, "uMouseY"),    inputs->mouse.y);
+    glUniform1i(glGetUniformLocation(s_prog, "uHighGfx"),   options.highGfx);
 
     /* Resolution */
     glUniform2f(glGetUniformLocation(s_prog, "uResolution"),
                 (float)BUFFER_W, (float)BUFFER_H);
 
-    /* --- Draw --- */
+    /* --- Draw raycaster into the low-res offscreen target --- */
+    glBindFramebuffer(GL_FRAMEBUFFER, s_raycastFBO);
+    glViewport(0, 0, BUFFER_W, BUFFER_H);
     glClear(GL_COLOR_BUFFER_BIT);
+    glBindVertexArray(s_vao);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glBindVertexArray(0);
+
+    {
+        static int s_pixelLogged = 0;
+        if (!s_pixelLogged) {
+            GLenum err = glGetError();
+            GLenum fboStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+            uint8_t px[4] = {0};
+            glReadPixels(BUFFER_W / 2, BUFFER_H / 2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+            printf("[gl_renderer] raycast FBO check: glError=0x%x fboStatus=0x%x "
+                   "prog=%u centerPixelRGBA=(%d,%d,%d,%d)\n",
+                   err, fboStatus, s_prog, px[0], px[1], px[2], px[3]);
+            s_pixelLogged = 1;
+        }
+    }
+
+    /* --- Back to the window, upscale the raycast result with a cheap nearest blit --- */
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glViewport(0, 0, WINDOW_W, WINDOW_H);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glUseProgram(s_blitProg);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, s_raycastTex);
+    glUniform1i(glGetUniformLocation(s_blitProg, "uFrame"), 0);
+    glUniform1i(glGetUniformLocation(s_blitProg, "uFlipY"), 1);
     glBindVertexArray(s_vao);
     glDrawArrays(GL_TRIANGLES, 0, 6);
     glBindVertexArray(0);
@@ -715,6 +827,7 @@ int gl_renderer_frame(void *inputs_v) {
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, s_frameTex);
     glUniform1i(glGetUniformLocation(s_blitProg, "uFrame"), 0);
+    glUniform1i(glGetUniformLocation(s_blitProg, "uFlipY"), 0);
     glBindVertexArray(s_vao);
     glDrawArrays(GL_TRIANGLES, 0, 6);
     glBindVertexArray(0);

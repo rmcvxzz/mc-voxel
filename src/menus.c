@@ -1270,20 +1270,31 @@ static int menu_optionsMain(SDL_Renderer *renderer, Inputs *inputs) {
                 }
 
                 break;
+        case 2:
+                if (g_use_opengl) {
+                        if (button(renderer, options.highGfx ? T("OPTIONS_HIGH_GFX_ON") : T("OPTIONS_HIGH_GFX_OFF"),
+                                   BUFFER_HALF_W - 64, 20, 128, inputs->mouse.x, inputs->mouse.y) &&
+                            mouseClicked(inputs)) {
+                                audio_play_click();
+                                options.highGfx = !options.highGfx;
+                        }
+                }
+
+                break;
         }
 
         if (button(renderer, "<", BUFFER_HALF_W - 86, 20, 16, inputs->mouse.x, inputs->mouse.y) &&
             mouseClicked(inputs)) {
                 audio_play_click();
                 page--;
-                page = nmod(page, 2);
+                page = nmod(page, 3);
         }
 
         if (button(renderer, ">", BUFFER_HALF_W + 70, 20, 16, inputs->mouse.x, inputs->mouse.y) &&
             mouseClicked(inputs)) {
                 audio_play_click();
                 page++;
-                page = nmod(page, 2);
+                page = nmod(page, 3);
         }
 
         if (button(renderer, T("COMMON_DONE"), BUFFER_HALF_W - 64, 86, 128, inputs->mouse.x,

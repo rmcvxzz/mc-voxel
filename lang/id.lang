@@ -66,6 +66,8 @@ OPTIONS_FOV_HIGH=FOV: Tinggi
 OPTIONS_FOV_UNKNOWN=FOV: ?
 OPTIONS_FOG_GRADUAL=Kabut: Bertahap
 OPTIONS_FOG_SHARP=Kabut: Tajam
+OPTIONS_HIGH_GFX_ON= Grafik Bagus: NYALA
+OPTIONS_HIGH_GFX_OFF=Grafik Bagus: MATI
 
 # In-Game Chat / Messages
 CHAT_GAME_STARTED=Permainan dimulai

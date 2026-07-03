@@ -57,6 +57,15 @@ void discord_rpc_update_presence(const char *state, const char *details, int64_t
     Discord_UpdatePresence(&presence);
 }
 
+void discord_rpc_run_callbacks(void) {
+    if (!initialized) return;
+    /* Queued presence updates only actually get sent over the IPC pipe to
+     * the Discord client when this runs - without polling it periodically,
+     * Discord_UpdatePresence() calls just sit in an internal queue and the
+     * displayed status never changes after the very first flush. */
+    Discord_RunCallbacks();
+}
+
 #else
 // Stubs when Discord RPC is disabled
 
@@ -65,5 +74,6 @@ void discord_rpc_quit(void) { }
 void discord_rpc_update_presence(const char *state, const char *details, int64_t start_timestamp) {
     (void)state; (void)details; (void)start_timestamp;
 }
+void discord_rpc_run_callbacks(void) { }
 
 #endif

@@ -3,6 +3,14 @@
 #include "imgui_impl_sdl2.h"
 #include "imgui_impl_sdlrenderer2.h"
 
+/* GL backend paired with the project's existing GLAD loader - glad must be
+ * included before imgui_impl_opengl3.h so its function/type declarations are
+ * already visible, and IMGUI_IMPL_OPENGL_LOADER_CUSTOM tells the backend not
+ * to pull in its own embedded gl3w-based loader. */
+#include "glad/glad.h"
+#define IMGUI_IMPL_OPENGL_LOADER_CUSTOM
+#include "imgui_impl_opengl3.h"
+
 extern "C" {
 #include "terrain.h"
 #include "player.h"
@@ -17,12 +25,14 @@ extern int    g_debug_mode;
 extern "C" ImguiDebugState g_imgui_debug;
 ImguiDebugState g_imgui_debug = { 0 };
 
-static SDL_Renderer *s_renderer = NULL;
+static SDL_Renderer *s_renderer  = NULL;
+static bool          s_usingGL   = false;
 
 extern "C" {
 
 void imgui_init(SDL_Window *window, SDL_Renderer *renderer) {
     s_renderer = renderer;
+    s_usingGL  = false;
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
@@ -41,8 +51,33 @@ void imgui_init(SDL_Window *window, SDL_Renderer *renderer) {
     ImGui_ImplSDLRenderer2_Init(renderer);
 }
 
+void imgui_init_gl(SDL_Window *window, SDL_GLContext gl_context) {
+    s_renderer = NULL;
+    s_usingGL  = true;
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+
+    ImGuiIO &io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+    ImGui::StyleColorsDark();
+    ImGuiStyle &style = ImGui::GetStyle();
+    style.Alpha         = 0.88f;
+    style.WindowRounding = 5.0f;
+    style.FrameRounding  = 3.0f;
+    style.GrabRounding   = 3.0f;
+    style.WindowPadding  = ImVec2(10, 8);
+
+    ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
+    ImGui_ImplOpenGL3_Init("#version 330 core");
+}
+
 void imgui_shutdown(void) {
-    ImGui_ImplSDLRenderer2_Shutdown();
+    if (s_usingGL) {
+        ImGui_ImplOpenGL3_Shutdown();
+    } else {
+        ImGui_ImplSDLRenderer2_Shutdown();
+    }
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();
 }
@@ -52,13 +87,19 @@ void imgui_process_event(SDL_Event *event) {
 }
 
 void imgui_new_frame(void) {
-    ImGui_ImplSDLRenderer2_NewFrame();
+    if (s_usingGL) {
+        ImGui_ImplOpenGL3_NewFrame();
+    } else {
+        ImGui_ImplSDLRenderer2_NewFrame();
+    }
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
 }
 
 void imgui_render(void) {
-    SDL_RenderSetScale(s_renderer, 1.0f, 1.0f);
+    if (!s_usingGL) {
+        SDL_RenderSetScale(s_renderer, 1.0f, 1.0f);
+    }
 
     if (g_debug_mode) {
         // Menu bar window (top strip, full width)
@@ -177,8 +218,13 @@ void imgui_render(void) {
     }
 
     ImGui::Render();
-    ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), s_renderer);
-    SDL_RenderSetScale(s_renderer, (float)BUFFER_SCALE, (float)BUFFER_SCALE);
+
+    if (s_usingGL) {
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    } else {
+        ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), s_renderer);
+        SDL_RenderSetScale(s_renderer, (float)BUFFER_SCALE, (float)BUFFER_SCALE);
+    }
 }
 
 int imgui_wants_mouse(void) {

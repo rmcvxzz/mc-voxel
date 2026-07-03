@@ -14,6 +14,7 @@ int options_init (void) {
                 .fogType      = 0,
                 .drawDistance = 20,
                 .trapMouse    = 0,
+                .highGfx      = 0,
                 .fov          = 90.0,
                 .username     = (const InputBuffer){
                         .buffer = username,
@@ -55,6 +56,7 @@ int options_load (void) {
                 PARAMETER(fogType,      "%i",  &options.fogType)
                 PARAMETER(drawDistance, "%i",  &options.drawDistance)
                 PARAMETER(trapMouse,    "%i",  &options.trapMouse)
+                PARAMETER(highGfx,      "%i",  &options.highGfx)
                 PARAMETER(fov,          "%lf", &options.fov)
                 PARAMETER(username,     "%7s", username)
                 PARAMETER(lang,         "%7s", options.lang)
@@ -82,6 +84,7 @@ int options_save (void) {
         fprintf(file, "fogType %i\n",      options.fogType);
         fprintf(file, "drawDistance %i\n", options.drawDistance);
         fprintf(file, "trapMouse %i\n",    options.trapMouse);
+        fprintf(file, "highGfx %i\n",      options.highGfx);
         fprintf(file, "fov %lf\n",         options.fov);
         fprintf(file, "username %s\n",     username);
         fprintf(file, "lang %s\n",         options.lang);

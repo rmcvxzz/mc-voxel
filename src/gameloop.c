@@ -9,6 +9,7 @@
 #include "gui.h"
 #include "discord_presence.h"
 #include "player_model.h"
+#include "loc.h"
 #include <time.h>
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -61,31 +62,31 @@ static void updateDiscordPresence(int state) {
 
 	switch (state) {
 	case STATE_TITLE:
-		discord_rpc_update_presence("In Main Menu", "TerraM4KC", 0);
+		discord_rpc_update_presence(T("DISCORD_MAIN_MENU"), "TerraM4KC", 0);
 		gameplayStartTime = 0;
 		break;
 	case STATE_SELECT_WORLD:
-		discord_rpc_update_presence("Selecting World", "TerraM4KC", 0);
+		discord_rpc_update_presence(T("DISCORD_SELECTING_WORLD"), "TerraM4KC", 0);
 		gameplayStartTime = 0;
 		break;
 	case STATE_NEW_WORLD:
-		discord_rpc_update_presence("Creating World", "TerraM4KC", 0);
+		discord_rpc_update_presence(T("DISCORD_CREATING_WORLD"), "TerraM4KC", 0);
 		gameplayStartTime = 0;
 		break;
 	case STATE_LOADING:
-		discord_rpc_update_presence("Loading World", "TerraM4KC", 0);
+		discord_rpc_update_presence(T("DISCORD_LOADING_WORLD"), "TerraM4KC", 0);
 		break;
 	case STATE_GAMEPLAY:
 		if (gameplayStartTime == 0) {
 			gameplayStartTime = time(NULL);
 		}
-		discord_rpc_update_presence("Playing Singleplayer", "TerraM4KC", gameplayStartTime);
+		discord_rpc_update_presence(T("DISCORD_SINGLEPLAYER"), "TerraM4KC", gameplayStartTime);
 		break;
 	case STATE_OPTIONS:
-		discord_rpc_update_presence("In Options", "TerraM4KC", 0);
+		discord_rpc_update_presence(T("DISCORD_IN_OPTIONS"), "TerraM4KC", 0);
 		break;
 	default:
-		discord_rpc_update_presence("In Menu", "TerraM4KC", 0);
+		discord_rpc_update_presence(T("DISCORD_IN_MENU"), "TerraM4KC", 0);
 		gameplayStartTime = 0;
 		break;
 	}
@@ -276,6 +277,14 @@ static void gameLoop_gameplay(SDL_Renderer *renderer, Inputs *inputs) {
 		SDL_SetRenderDrawColor(renderer, 153 * timeCoef, 204 * timeCoef, 255 * timeCoef, 255);
 	}
 
+	if (g_use_opengl) {
+		/* GL mode: the GPU raycaster already draws sky+world. This buffer
+		 * only carries HUD/UI now, so clear it fully transparent instead
+		 * of opaque sky color, or it blots out the GPU render underneath
+		 * when composited. */
+		SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
+	}
+
 	SDL_RenderClear(renderer);
 
 	if (inputs->keyboard.esc) {
@@ -445,9 +454,19 @@ static void gameLoop_gameplay(SDL_Renderer *renderer, Inputs *inputs) {
 	}
 
 	selectedPass = 0;
+
+	/* GL mode: the GPU raycaster already draws the world, this CPU loop
+	 * only runs to find which block is under the crosshair/mouse. Instead
+	 * of raymarching all 214*120 pixels, skip straight to the one pixel
+	 * that actually matters. */
+	int targetPixelX = options.trapMouse ? BUFFER_HALF_W : inputs->mouse.x / BUFFER_SCALE;
+	int targetPixelY = options.trapMouse ? BUFFER_HALF_H : inputs->mouse.y / BUFFER_SCALE;
+
 	for (int pixelX = 0; pixelX < BUFFER_W; pixelX++) {
+		if (g_use_opengl && pixelX != targetPixelX) continue;
 		double rayOffsetX = (pixelX - BUFFER_HALF_W) / effectFov;
 		for (int pixelY = 0; pixelY < BUFFER_H; pixelY++) {
+			if (g_use_opengl && pixelY != targetPixelY) continue;
 			int finalPixelColor = 0;
 			int pixelMist       = 255;
 			int pixelShade;
@@ -631,13 +650,17 @@ static void gameLoop_gameplay(SDL_Renderer *renderer, Inputs *inputs) {
 			}
 
 			// Draw inverted color crosshair
-			if (options.trapMouse &&
+			if (!g_use_opengl && options.trapMouse &&
 			    ((pixelX == BUFFER_HALF_W && abs(BUFFER_HALF_H - pixelY) < 4) ||
 			     (pixelY == BUFFER_HALF_H && abs(BUFFER_HALF_W - pixelX) < 4))) {
 				finalPixelColor = 0x1000000 - finalPixelColor;
 			}
 
-			if (finalPixelColor > 0) {
+			/* In GL mode the GPU raycaster already draws the world - this
+			 * CPU loop only runs for its side effect of computing block
+			 * selection (_gl_blockSelectX/Y/Z), so skip the actual pixel
+			 * draw or it'll double-composite on top of the GPU render. */
+			if (!g_use_opengl && finalPixelColor > 0) {
 				SDL_SetRenderDrawColor(renderer, ((finalPixelColor >> 16 & 0xFF) * pixelShade) >> 8,
 				                       ((finalPixelColor >> 8 & 0xFF) * pixelShade) >> 8,
 				                       ((finalPixelColor & 0xFF) * pixelShade) >> 8,
@@ -648,8 +671,8 @@ static void gameLoop_gameplay(SDL_Renderer *renderer, Inputs *inputs) {
 		}
 	}
 
-	// Make camera blue if in water
-	if (headInWater) {
+	// Make camera blue if in water (GL mode: shader already applies this)
+	if (!g_use_opengl && headInWater) {
 		SDL_SetRenderDrawColor(renderer, 16, 32, 255, 128);
 		SDL_RenderFillRect(renderer, &backgroundRect);
 	}
@@ -789,8 +812,20 @@ static void gameLoop_processMovement(Inputs *inputs, int inWater) {
 		double speed = 0.02;
 
 		if (doPhysics) {
-			player->FBVelocity = (inputs->keyboard.w - inputs->keyboard.s) * speed;
-			player->LRVelocity = (inputs->keyboard.d - inputs->keyboard.a) * speed;
+			double targetFB = (inputs->keyboard.w - inputs->keyboard.s) * speed;
+			double targetLR = (inputs->keyboard.d - inputs->keyboard.a) * speed;
+
+			if (options.highGfx) {
+				/* Ease velocity toward the target instead of snapping,
+				 * gives movement acceleration/deceleration instead of
+				 * an instant start/stop. */
+				double accelRate = 0.12;
+				player->FBVelocity += (targetFB - player->FBVelocity) * accelRate;
+				player->LRVelocity += (targetLR - player->LRVelocity) * accelRate;
+			} else {
+				player->FBVelocity = targetFB;
+				player->LRVelocity = targetLR;
+			}
 		}
 	}
 

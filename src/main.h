@@ -6,6 +6,7 @@
 extern int g_debug_mode;
 extern int g_use_opengl;
 extern int g_mcpi_on;
+extern int g_high_gfx;
 
 /* InputKeys
  * Stores only key presses. Reset to zero every frame.

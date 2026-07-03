@@ -18,7 +18,12 @@ typedef struct {
 
 extern ImguiDebugState g_imgui_debug;
 
+/* SDL_Renderer backend - used when running without --opengl */
 void imgui_init(SDL_Window *window, SDL_Renderer *renderer);
+
+/* OpenGL3 backend - used when running with --opengl */
+void imgui_init_gl(SDL_Window *window, SDL_GLContext gl_context);
+
 void imgui_shutdown(void);
 void imgui_process_event(SDL_Event *event);
 void imgui_new_frame(void);

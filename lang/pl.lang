@@ -66,6 +66,8 @@ OPTIONS_FOV_HIGH=FOV: Wysokie
 OPTIONS_FOV_UNKNOWN=FOV: ?
 OPTIONS_FOG_GRADUAL=Mgła: Stopniowa
 OPTIONS_FOG_SHARP=Mgła: Ostra
+OPTIONS_HIGH_GFX_ON=Tryb wysokiej jakości grafiki dla trybu OpenGL: WŁĄCZONY
+OPTIONS_HIGH_GFX_OFF=Tryb wysokiej jakości grafiki dla trybu OpenGL: WYŁĄCZONY
 
 # In-Game Chat / Messages
 CHAT_GAME_STARTED=Gra rozpoczęta

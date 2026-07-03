@@ -215,6 +215,7 @@ add_library(imgui STATIC
     ${IMGUI_DIR}/imgui_widgets.cpp
     ${IMGUI_DIR}/backends/imgui_impl_sdl2.cpp
     ${IMGUI_DIR}/backends/imgui_impl_sdlrenderer2.cpp
+    ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
 )
 
 target_include_directories(imgui PUBLIC

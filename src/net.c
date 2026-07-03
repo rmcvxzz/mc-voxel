@@ -225,10 +225,18 @@ void net_update(World *world, Player *localPlayer) {
             switch (type) {
             case NET_MSG_WELCOME: {
                 net.localPlayerId = buf[0];
-                memcpy(&world->seed, buf + 1, 4);
+
+                uint32_t seed32 = 0;
+                memcpy(&seed32, buf + 1, 4);
+                world->seed = (uint64_t)seed32; /* zero-extend, don't leave stale upper bytes */
+
                 world->type = buf[5];
                 world->dayNightMode = buf[6];
-                memcpy(&world->time, buf + 7, 4);
+
+                uint32_t time32 = 0;
+                memcpy(&time32, buf + 7, 4);
+                world->time = (uint64_t)time32;
+
                 net.isInGame = 1;
                 printf("Joined as player %d, seed=%llu\n", net.localPlayerId, (unsigned long long)world->seed);
                 break;

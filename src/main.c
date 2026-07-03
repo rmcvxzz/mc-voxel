@@ -49,8 +49,10 @@ static int handleEvent(Inputs *, const uint8_t *, SDL_Event);
 int g_debug_mode = 0;
 int g_use_opengl = 0;
 int g_mcpi_on    = 0;
+int g_high_gfx_cli_force = 0;
 
 int main(int argc, char *argv[]) {
+	// Parse command line arguments
 	for (int i = 1; i < argc; i++) {
 		if (strcmp(argv[i], "--debug") == 0) {
 			g_debug_mode = 1;
@@ -60,6 +62,9 @@ int main(int argc, char *argv[]) {
 		}
 		if (strcmp(argv[i], "--mcpi-on") == 0) {
 			g_mcpi_on = 1;
+		}
+		if (strcmp(argv[i], "--high-gfx") == 0) {
+			g_high_gfx_cli_force = 1;
 		}
 	}
 
@@ -72,9 +77,8 @@ int main(int argc, char *argv[]) {
 		goto exit;
 	}
 
-	window =
-	    SDL_CreateWindow("TerraM4KC", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WINDOW_W,
-	                     WINDOW_H, SDL_WINDOW_SHOWN | (g_use_opengl ? SDL_WINDOW_OPENGL : 0));
+	window = SDL_CreateWindow("TerraM4KC", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+	                          WINDOW_W, WINDOW_H, SDL_WINDOW_SHOWN | (g_use_opengl ? SDL_WINDOW_OPENGL : 0));
 	if (window == NULL) {
 		printf("%s\n", SDL_GetError());
 		goto exit;
@@ -96,8 +100,12 @@ int main(int argc, char *argv[]) {
 		SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 	}
 
-	if (g_debug_mode && !g_use_opengl) {
-		imgui_init(window, renderer);
+	if (g_debug_mode) {
+		if (g_use_opengl) {
+			imgui_init_gl(window, gl_renderer_get_context());
+		} else {
+			imgui_init(window, renderer);
+		}
 	}
 
 	//--- initializing modules ---//
@@ -112,6 +120,10 @@ int main(int argc, char *argv[]) {
 	err = options_init();
 	if (err) {
 		gameLoop_error("Cannot initialize options module.");
+	}
+
+	if (g_high_gfx_cli_force) {
+		options.highGfx = 1;
 	}
 
 	loc_scan_langs();
@@ -146,11 +158,12 @@ int main(int argc, char *argv[]) {
 	while (running) {
 		uint32_t frameStartTime = SDL_GetTicks();
 
-		if (g_debug_mode && !g_use_opengl) {
+		if (g_debug_mode) {
 			imgui_new_frame();
 		}
 
 		running &= controlLoop(&inputs, keyboard);
+		discord_rpc_run_callbacks();
 
 		if (g_use_opengl) {
 			running &= gl_renderer_frame(&inputs);
@@ -177,11 +190,10 @@ int main(int argc, char *argv[]) {
 	}
 
 exit:
-	if (g_mcpi_on)
-		mcpi_quit();
+	if (g_mcpi_on) mcpi_quit();
+	if (g_debug_mode) imgui_shutdown();
 	audio_quit();
-	if (g_use_opengl)
-		gl_renderer_quit();
+	if (g_use_opengl) gl_renderer_quit();
 	discord_rpc_quit();
 	loc_quit();
 	SDL_Quit();

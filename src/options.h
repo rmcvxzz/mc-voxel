@@ -5,6 +5,7 @@ typedef struct {
         int    fogType;
         int    drawDistance;
         int    trapMouse;
+        int    highGfx;
         double fov;
         InputBuffer username;
         char   lang[8];
