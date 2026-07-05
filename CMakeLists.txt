@@ -222,13 +222,21 @@ target_include_directories(imgui PUBLIC
     ${IMGUI_DIR}
     ${IMGUI_DIR}/backends
     ${SDL2_INCLUDE_DIRS}
+    ${SDL2_INCLUDE_DIRS}/SDL2
 )
 
 set_target_properties(imgui PROPERTIES LINKER_LANGUAGE CXX)
 
 add_executable(m4kc ${SOURCES} ${HEADERS})
 
-target_include_directories(m4kc PRIVATE ${SDL2_INCLUDE_DIRS} ${SDL2_NET_INCLUDE_DIRS} ${SDL2_IMAGE_INCLUDE_DIRS} src glad/include)
+target_include_directories(m4kc PRIVATE
+    ${SDL2_INCLUDE_DIRS}
+    ${SDL2_INCLUDE_DIRS}/SDL2
+    ${SDL2_NET_INCLUDE_DIRS}
+    ${SDL2_NET_INCLUDE_DIRS}/SDL2
+    ${SDL2_IMAGE_INCLUDE_DIRS}
+    ${SDL2_IMAGE_INCLUDE_DIRS}/SDL2
+    src glad/include)
 target_link_libraries(m4kc PRIVATE imgui ${SDL2_LIBRARIES} ${SDL2_NET_LIBRARIES} ${SDL2_IMAGE_LIBRARIES})
 
 # OpenGL
