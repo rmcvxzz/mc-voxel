@@ -21,7 +21,7 @@ if(WIN32)
     endif()
 
     if(EXISTS "${CMAKE_SOURCE_DIR}/win/SDL2/include/SDL2/SDL.h")
-        set(SDL2_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/win/SDL2/include/SDL2")
+        set(SDL2_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/win/SDL2/include")
         set(SDL2_LIBRARIES
             "${CMAKE_SOURCE_DIR}/win/SDL2/lib/libSDL2.dll.a"
             # "${CMAKE_SOURCE_DIR}/win/SDL2/lib/libSDL2main.a"
@@ -52,7 +52,7 @@ endif()
 # SDL2_net finding - bundled in win/
 if(WIN32)
     if(EXISTS "${CMAKE_SOURCE_DIR}/win/SDL2_net/include/SDL2/SDL_net.h")
-        set(SDL2_NET_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/win/SDL2_net/include/SDL2")
+        set(SDL2_NET_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/win/SDL2_net/include")
         if(EXISTS "${CMAKE_SOURCE_DIR}/win/SDL2_net/lib/libSDL2_net.dll.a")
             set(SDL2_NET_LIBRARIES "${CMAKE_SOURCE_DIR}/win/SDL2_net/lib/libSDL2_net.dll.a")
             message(STATUS "Using bundled SDL2_net (MinGW) from win/SDL2_net/")
@@ -85,7 +85,7 @@ endif()
 
 if(WIN32)
     if(EXISTS "${CMAKE_SOURCE_DIR}/win/SDL2_image/include/SDL2/SDL_image.h")
-        set(SDL2_IMAGE_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/win/SDL2_image/include/SDL2")
+        set(SDL2_IMAGE_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/win/SDL2_image/include")
         if(EXISTS "${CMAKE_SOURCE_DIR}/win/SDL2_image/lib/libSDL2_image.dll.a")
             set(SDL2_IMAGE_LIBRARIES "${CMAKE_SOURCE_DIR}/win/SDL2_image/lib/libSDL2_image.dll.a")
             message(STATUS "Using bundled SDL2_image (MinGW) from win/SDL2_image/")
@@ -293,7 +293,7 @@ if(WIN32)
     # SDL2_image finding - bundled in win/
     if(WIN32)
         if(EXISTS "${CMAKE_SOURCE_DIR}/win/SDL2_image/include/SDL2/SDL_image.h")
-            set(SDL2_IMAGE_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/win/SDL2_image/include/SDL2")
+            set(SDL2_IMAGE_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/win/SDL2_image/include")
             if(EXISTS "${CMAKE_SOURCE_DIR}/win/SDL2_image/lib/libSDL2_image.dll.a")
                 set(SDL2_IMAGE_LIBRARIES "${CMAKE_SOURCE_DIR}/win/SDL2_image/lib/libSDL2_image.dll.a")
                 message(STATUS "Using bundled SDL2_image (MinGW) from win/SDL2_image/")

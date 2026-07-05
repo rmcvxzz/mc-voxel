@@ -17,7 +17,10 @@
 - [x] Debug support
 - [ ] Dedicated server (really big, might not finish it)
 - [x] Audio support (using miniaudio)
-- [-] MCPI API Library support
+- [x] MCPI API Library support
+- [ ] Fullscreen support
+- [ ] External block textures
+- [ ] Demo recording
 
 ## Gameplay category
 
@@ -26,3 +29,6 @@
 - [-] Actual player models with textures
 - [x] Localization (system implemented, only 3 languages supported)
 - [ ] Infinite world generation (needs reworking some stuff)
+- [ ] Survival mode
+- [ ] Hovering in Creative Mode
+- [ ] Clouds
