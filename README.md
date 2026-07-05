@@ -1,8 +1,9 @@
 ![TerraM4KC](assets/textures/logo.png)
 
-### TerraM4KC is a modified version of M4KC that adds New Features.
+### TerraM4KC is a fork of M4KC that adds New Features.
 
 It adds many new features that are (definitely) not on the M4KC roadmap.<br>
+It also aims to be as modding-friendly as possible by making textures external.<br>
 Simply, i am not affiliated with Sasha Koshka nor Mojang Studios.
 
 ### Features implemented:
@@ -16,13 +17,15 @@ Simply, i am not affiliated with Sasha Koshka nor Mojang Studios.
 
 ### Libraries used by TerraM4KC/M4KC:
 
+- CMake build system
+- Discord RPC (deprecated version)
+- Dear ImGui
+- GLAD (OpenGL loader)
+- miniaudio
+- OpenGL (renderer)
 - SDL2
 - SDL2_net
 - SDL2_image
-- Dear ImGui
-- miniaudio
-- Discord RPC (deprecated version)
-- CMake build system
 
 ### Notes:
 
