@@ -132,12 +132,12 @@ int state_title(SDL_Renderer *renderer, Inputs *inputs, int *gameState) {
         }
 
 #ifdef __ANDROID__
-        shadowStr(renderer, "[TEMP] 0.1.0", 1, BUFFER_H - 9);
+        shadowStr(renderer, "SCRAPPED!", 1, BUFFER_H - 9);
 #else
 #ifdef small
-        shadowStr(renderer, "[DEV] 0.1.0", 1, BUFFER_H - 9);
+        shadowStr(renderer, "[DEV] v0.1.7", 1, BUFFER_H - 9);
 #else
-        shadowStr(renderer, "0.1.0", 1, BUFFER_H - 9);
+        shadowStr(renderer, "v0.1.7", 1, BUFFER_H - 9);
 #endif
 #endif
 
