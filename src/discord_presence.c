@@ -1,4 +1,3 @@
-#include <discord_rpc.h>  // SDK header
 #include "discord_presence.h"
 
 #ifdef TERRAM4KC_DISCORD_RPC
