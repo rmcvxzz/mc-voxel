@@ -16,6 +16,7 @@
 #define STATE_MULTIPLAYER  9
 #define STATE_SERVER_LIST  10
 #define STATE_HOST_SERVER  11
+#define STATE_SPLASH       12
 
 #define POPUP_HUD            0
 #define POPUP_PAUSE          1
@@ -28,6 +29,7 @@
 #define POPUP_OVERVIEW       8
 
 int  state_title       (SDL_Renderer *, Inputs *, int *);
+int  state_splash      (SDL_Renderer *, Inputs *, int *);
 void state_selectWorld (SDL_Renderer *, Inputs *, int *, World *);
 void state_newWorld    (SDL_Renderer *, Inputs *, int *, World *);
 void state_multiplayer (SDL_Renderer *, Inputs *, int *);

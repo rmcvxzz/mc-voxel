@@ -26,7 +26,7 @@
 World world    = {0};
 Player *player = &world.player;
 
-int gameState = STATE_TITLE;
+int gameState = STATE_SPLASH;
 int gamePopup;
 
 static int guiOn;
@@ -133,6 +133,11 @@ int gameLoop(Inputs *inputs, SDL_Renderer *renderer) {
 	}
 
 	switch (gameState) {
+	case STATE_SPLASH:
+		if (state_splash(renderer, inputs, &gameState))
+			return 0;
+		break;
+
 	case STATE_TITLE:
 		// A main menu
 		if (state_title(renderer, inputs, &gameState))

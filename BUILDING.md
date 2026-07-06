@@ -13,11 +13,10 @@
 
 1. Assuming you have cloned the repository, see below for options.
 
-| Generators            | Commands                                         |
-| --------------------- | ------------------------------------------------ |
-| Ninja                 | `cmake -B build -G Ninja -S .`                   |
-| Visual Studio 18 2026 | `cmake -B build -G "Visual Studio 18 2026" -S .` |
-| MinGW Makefiles       | `cmake -B build -G "MinGW Makefiles" -S .`       |
+| Generators      | Commands                                   |
+| --------------- | ------------------------------------------ |
+| Ninja           | `cmake -B build -G Ninja -S .`             |
+| MinGW Makefiles | `cmake -B build -G "MinGW Makefiles" -S .` |
 
 Build files are generated on `./build`.
 

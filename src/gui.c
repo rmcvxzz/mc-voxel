@@ -1,13 +1,18 @@
 #include "gui.h"
 #include "blocks.h"
 
+/* NOTE: BUFFER_HALF_W/H and WINDOW_W/H are written as literal expressions
+ * (not BUFFER_W/2 etc.) because MSVC requires true constant expressions for
+ * global initializers - referencing another const int isn't one in C (MinGW/
+ * GCC allow it as an extension, MSVC correctly doesn't). If BUFFER_W, BUFFER_H,
+ * or BUFFER_SCALE change, update these to match by hand. */
 const int BUFFER_W      = 214;
 const int BUFFER_H      = 120;
 const int BUFFER_SCALE  = 4;
-const int BUFFER_HALF_W = BUFFER_W / 2;
-const int BUFFER_HALF_H = BUFFER_H / 2;
-const int WINDOW_W      = BUFFER_W * BUFFER_SCALE;
-const int WINDOW_H      = BUFFER_H * BUFFER_SCALE;
+const int BUFFER_HALF_W = 214 / 2;
+const int BUFFER_HALF_H = 120 / 2;
+const int WINDOW_W      = 214 * 4;
+const int WINDOW_H      = 120 * 4;
 
 char chatHistory[11][64] = {0};
 int chatHistoryFade[11]  = {0};

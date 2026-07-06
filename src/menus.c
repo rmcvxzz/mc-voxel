@@ -14,7 +14,7 @@ static SDL_Texture *s_logo = NULL;
 static void loadLogo(SDL_Renderer *renderer) {
         if (s_logo)
                 SDL_DestroyTexture(s_logo);
-        s_logo = IMG_LoadTexture(renderer, "assets/textures/logo.png");
+        s_logo = IMG_LoadTexture(renderer, "assets/textures/menu/logo.png");
         if (!s_logo)
                 printf("Logo load failed: %s\n", IMG_GetError());
 }
@@ -38,6 +38,80 @@ static int mouseClicked(Inputs *inputs) {
  * Presents a title screen with basic options. Is capable of changing the game
  * state.
  */
+#define SPLASH_HOLD_MS 2000
+#define SPLASH_FADE_MS 500
+
+/* state_splash
+ * Shows assets/textures/menu/splash.bmp on a solid #8d69ff background for
+ * ~2 seconds, then fades OUT to reveal the title menu underneath (not a
+ * fade to a flat color followed by a hard cut).
+ *
+ * The splash texture is reloaded every frame rather than cached - in GL mode
+ * a fresh software renderer is created each frame (see gl_renderer.c), and a
+ * texture created on one renderer instance is invalid on the next, same as
+ * the logo bug fixed earlier in loadLogo().
+ */
+int state_splash(SDL_Renderer *renderer, Inputs *inputs, int *gameState) {
+        static uint32_t s_startTime = 0;
+        if (s_startTime == 0) {
+                s_startTime = SDL_GetTicks();
+        }
+
+        uint32_t elapsed     = SDL_GetTicks() - s_startTime;
+        int      fading      = elapsed > SPLASH_HOLD_MS;
+        uint32_t fadeElapsed = fading ? elapsed - SPLASH_HOLD_MS : 0;
+        int      alpha       = 255;
+        if (fading) {
+                alpha = 255 - (int)(255.0f * (float)fadeElapsed / SPLASH_FADE_MS);
+                if (alpha < 0) alpha = 0;
+        }
+
+        /* While fading, draw the actual title menu first so it's visible
+         * underneath as the splash's alpha drops away. */
+        if (fading) {
+                state_title(renderer, inputs, gameState);
+        }
+
+        if (alpha > 0) {
+                SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+                SDL_SetRenderDrawColor(renderer, 0x8d, 0x69, 0xff, alpha);
+                SDL_Rect full = {0, 0, BUFFER_W, BUFFER_H};
+                SDL_RenderFillRect(renderer, &full);
+
+                SDL_Texture *splash = IMG_LoadTexture(renderer, "assets/textures/menu/splash.png");
+                if (splash) {
+                        int sw, sh;
+                        SDL_QueryTexture(splash, NULL, NULL, &sw, &sh);
+
+                        /* Fit within both dimensions (not just width) - a
+                         * square-ish source image would otherwise overflow
+                         * the 120px-tall buffer badly if only width were
+                         * constrained. */
+                        int   maxW   = BUFFER_W - 20;
+                        int   maxH   = BUFFER_H - 20;
+                        float scaleW = (float)maxW / (float)sw;
+                        float scaleH = (float)maxH / (float)sh;
+                        float scale  = scaleW < scaleH ? scaleW : scaleH;
+
+                        int drawW = (int)(sw * scale);
+                        int drawH = (int)(sh * scale);
+                        SDL_Rect dest = {BUFFER_HALF_W - drawW / 2,
+                                         BUFFER_HALF_H - drawH / 2, drawW, drawH};
+                        SDL_SetTextureAlphaMod(splash, alpha);
+                        SDL_SetTextureBlendMode(splash, SDL_BLENDMODE_BLEND);
+                        SDL_RenderCopy(renderer, splash, NULL, &dest);
+                        SDL_DestroyTexture(splash);
+                }
+        }
+
+        if (fading && fadeElapsed >= SPLASH_FADE_MS) {
+                *gameState  = STATE_TITLE;
+                s_startTime = 0;
+        }
+
+        return 0;
+}
+
 int state_title(SDL_Renderer *renderer, Inputs *inputs, int *gameState) {
         inputs->mouse.x /= BUFFER_SCALE;
         inputs->mouse.y /= BUFFER_SCALE;
