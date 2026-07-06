@@ -1,4 +1,4 @@
-![TerraM4KC](assets/textures/logo.png)
+![TerraM4KC](assets/textures/menu/logo.png)
 
 ### TerraM4KC is a fork of M4KC that adds New Features.
 
