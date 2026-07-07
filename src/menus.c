@@ -743,7 +743,7 @@ void popup_hud(SDL_Renderer *renderer, Inputs *inputs, World *world, int *debugO
         // Debug screen
         if (*debugOn) {
                 static char debugText[][32] = {
-                    "TerraM4KC v0.1.7", "Seed: ", "X: ", "Y: ", "Z: ", "FPS: ", "ChunkX: ", "ChunkY: ", "ChunkZ: "};
+                    "M4KC 0.7", "Seed: ", "X: ", "Y: ", "Z: ", "FPS: ", "ChunkX: ", "ChunkY: ", "ChunkZ: "};
 
                 // Seed
                 strnum(debugText[1], 6, world->seed);
