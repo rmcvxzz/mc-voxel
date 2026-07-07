@@ -19,9 +19,10 @@
 - [x] Audio support (using miniaudio)
 - [x] MCPI API Library support
 - [-] Fullscreen support
-- [ ] External block textures
+- [-] External block textures (textures are finished but not implemented)
 - [ ] Demo recording
-- [x] Linux support (wayyy easy because the sdl2 libs must be installed on the user's end)
+- [x] Linux support (wayyy easy because the sdl2 libs must be installed on the user's end, no included/linked libs)
+- [-] macOS support
 
 ## Gameplay category
 

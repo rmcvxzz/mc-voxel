@@ -19,7 +19,7 @@ jobs:
           brew install cmake ninja pkg-config sdl2 sdl2_net sdl2_image
 
       - name: Configure
-        run: cmake -B build -G Ninja -S .
+        run: cmake -B build -G Ninja -S . -DCMAKE_PREFIX_PATH="$(brew --prefix)"
 
       - name: Build
         run: ninja -C build
