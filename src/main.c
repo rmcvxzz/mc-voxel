@@ -43,8 +43,8 @@
 #define MAX_FPS 60
 #define MIN_FRAME_MILLISECONDS 1000 / MAX_FPS
 
-static int controlLoop(Inputs *, const uint8_t *);
-static int handleEvent(Inputs *, const uint8_t *, SDL_Event);
+static int controlLoop(Inputs *, const uint8_t *, SDL_Window *);
+static int handleEvent(Inputs *, const uint8_t *, SDL_Event, SDL_Window *);
 
 int g_debug_mode = 0;
 int g_use_opengl = 0;
@@ -126,6 +126,10 @@ int main(int argc, char *argv[]) {
 		options.highGfx = 1;
 	}
 
+	if (options.fullscreen) {
+		SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+	}
+
 	loc_scan_langs();
 	if (options.lang[0] == '\0') {
 		strncpy(options.lang, "en", sizeof(options.lang));
@@ -155,14 +159,20 @@ int main(int argc, char *argv[]) {
 
 	Inputs inputs = {0};
 	int running   = 1;
+	int prevFullscreen = options.fullscreen;
 	while (running) {
+		if (options.fullscreen != prevFullscreen) {
+			SDL_SetWindowFullscreen(window,
+				options.fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
+			prevFullscreen = options.fullscreen;
+		}
 		uint32_t frameStartTime = SDL_GetTicks();
 
 		if (g_debug_mode) {
 			imgui_new_frame();
 		}
 
-		running &= controlLoop(&inputs, keyboard);
+		running &= controlLoop(&inputs, keyboard, window);
 		discord_rpc_run_callbacks();
 
 		if (g_use_opengl) {
@@ -200,7 +210,7 @@ exit:
 	return 0;
 }
 
-static int controlLoop(Inputs *inputs, const Uint8 *keyboard) {
+static int controlLoop(Inputs *inputs, const Uint8 *keyboard, SDL_Window *window) {
 	SDL_PumpEvents();
 	int mouseX = 0, mouseY = 0;
 	SDL_GetMouseState(&mouseX, &mouseY);
@@ -218,7 +228,7 @@ static int controlLoop(Inputs *inputs, const Uint8 *keyboard) {
 
 	SDL_Event event;
 	while (SDL_PollEvent(&event)) {
-		if (!handleEvent(inputs, keyboard, event)) {
+		if (!handleEvent(inputs, keyboard, event, window)) {
 			return 0;
 		}
 	}
@@ -226,7 +236,7 @@ static int controlLoop(Inputs *inputs, const Uint8 *keyboard) {
 	return 1;
 }
 
-static int handleEvent(Inputs *inputs, const uint8_t *keyboard, SDL_Event event) {
+static int handleEvent(Inputs *inputs, const uint8_t *keyboard, SDL_Event event, SDL_Window *window) {
 	if (g_debug_mode) {
 		imgui_process_event(&event);
 
@@ -244,6 +254,15 @@ static int handleEvent(Inputs *inputs, const uint8_t *keyboard, SDL_Event event)
 	switch (event.type) {
 	case SDL_QUIT:
 		return 0;
+
+	case SDL_WINDOWEVENT:
+		if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED ||
+		    event.window.event == SDL_WINDOWEVENT_RESIZED) {
+			if (g_use_opengl) {
+				gl_renderer_resize(event.window.data1, event.window.data2);
+			}
+		}
+		break;
 
 	case SDL_MOUSEBUTTONDOWN:
 		switch (event.button.button) {
@@ -269,6 +288,9 @@ static int handleEvent(Inputs *inputs, const uint8_t *keyboard, SDL_Event event)
 
 	case SDL_KEYDOWN:
 		inputs->keySym = event.key.keysym.sym;
+		if (event.key.repeat == 0 && event.key.keysym.scancode == SDL_SCANCODE_F11) {
+			options.fullscreen = !options.fullscreen;
+		}
 		__attribute__((fallthrough));
 	case SDL_KEYUP:
 		if (event.key.repeat == 0) {

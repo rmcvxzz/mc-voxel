@@ -1,9 +1,10 @@
 ![TerraM4KC](assets/textures/menu/logo.png)
 
 ### TerraM4KC is a fork of M4KC that adds New Features.
+<sub>though this repo isnt technically linked to the og m4kc repo.</sub>
 
 It adds many new features that are (definitely) not on the M4KC roadmap.<br>
-It also aims to be as modding-friendly as possible by making textures external.<br>
+It also aims to be as modding-friendly as possible by making textures external. (WIP)<br>
 Simply, i am not affiliated with Sasha Koshka nor Mojang Studios.
 
 ### Features implemented:

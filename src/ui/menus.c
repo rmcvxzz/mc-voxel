@@ -132,12 +132,12 @@ int state_title(SDL_Renderer *renderer, Inputs *inputs, int *gameState) {
         }
 
 #ifdef __ANDROID__
-        shadowStr(renderer, "SCRAPPED!", 1, BUFFER_H - 9);
+        shadowStr(renderer, "[TEMP] 0.1.0", 1, BUFFER_H - 9);
 #else
 #ifdef small
-        shadowStr(renderer, "[DEV] v0.1.7", 1, BUFFER_H - 9);
+        shadowStr(renderer, "[DEV] 0.1.0", 1, BUFFER_H - 9);
 #else
-        shadowStr(renderer, "v0.1.7", 1, BUFFER_H - 9);
+        shadowStr(renderer, "0.1.0", 1, BUFFER_H - 9);
 #endif
 #endif
 
@@ -743,7 +743,7 @@ void popup_hud(SDL_Renderer *renderer, Inputs *inputs, World *world, int *debugO
         // Debug screen
         if (*debugOn) {
                 static char debugText[][32] = {
-                    "TerraM4KC v0.1.7", "Seed: ", "X: ", "Y: ", "Z: ", "FPS: ", "ChunkX: ", "ChunkY: ", "ChunkZ: "};
+                    "TerraM4KC 0.1.7", "Seed: ", "X: ", "Y: ", "Z: ", "FPS: ", "ChunkX: ", "ChunkY: ", "ChunkZ: "};
 
                 // Seed
                 strnum(debugText[1], 6, world->seed);
@@ -1352,6 +1352,13 @@ static int menu_optionsMain(SDL_Renderer *renderer, Inputs *inputs) {
                                 audio_play_click();
                                 options.highGfx = !options.highGfx;
                         }
+                }
+
+                if (button(renderer, options.fullscreen ? T("OPTIONS_FULLSCREEN_ON") : T("OPTIONS_FULLSCREEN_OFF"),
+                           BUFFER_HALF_W - 64, 44, 128, inputs->mouse.x, inputs->mouse.y) &&
+                    mouseClicked(inputs)) {
+                        audio_play_click();
+                        options.fullscreen = !options.fullscreen;
                 }
 
                 break;

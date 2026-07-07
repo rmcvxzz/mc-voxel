@@ -3,7 +3,7 @@
 ### NOTE:
 
 - [ ] = NOT WORKED ON YET/BIG W.I.P
-- [-] HALFWAY FINISHED/NOT BUG TESTED
+- [-] = HALFWAY FINISHED/NOT BUG TESTED
 - [x] = FINISHED/BUG TESTED
 - [?] = THINKING ABOUT IT IF I SHOULD USE OR NOT
 
@@ -18,9 +18,10 @@
 - [ ] Dedicated server (really big, might not finish it)
 - [x] Audio support (using miniaudio)
 - [x] MCPI API Library support
-- [ ] Fullscreen support
+- [-] Fullscreen support
 - [ ] External block textures
 - [ ] Demo recording
+- [x] Linux support (wayyy easy because the sdl2 libs must be installed on the user's end)
 
 ## Gameplay category
 

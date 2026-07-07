@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(terram4kc VERSION 0.1.0 LANGUAGES C CXX)
+project(terram4kc VERSION 0.1.7 LANGUAGES C CXX)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Options
@@ -157,52 +157,52 @@ endif()
 # Source files
 set(SOURCES
     src/main.c
-    src/audio.c
-    src/discord_presence.c
-    src/data.c
-    src/gameloop.c
-    src/gui.c
-    src/inputbuffer.c
-    src/menus.c
-    src/minecraftfont.c
-    src/options.c
-    src/player.c
-    src/player_model.c
-    src/net.c
-    src/terrain.c
-    src/textures.c
-    src/utility.c
-    src/imgui_renderer.cpp
-    src/loc.c
-    src/gl_renderer.c
-    src/mcpi.c
+    src/audio/audio.c
+    src/discord/discord_presence.c
+    src/data/data.c
+    src/core/gameloop.c
+    src/render/gui.c
+    src/data/inputbuffer.c
+    src/ui/menus.c
+    src/render/minecraftfont.c
+    src/data/options.c
+    src/core/player.c
+    src/core/player_model.c
+    src/net/net.c
+    src/core/terrain.c
+    src/render/textures.c
+    src/util/utility.c
+    src/ui/imgui_renderer.cpp
+    src/data/loc.c
+    src/render/gl_renderer.c
+    src/net/mcpi.c
     glad/src/glad.c
 )
 
 set(HEADERS
-    src/blocks.h
-    src/compat.h
-    src/coords.h
-    src/data.h
-    src/gameloop.h
-    src/gui.h
-    src/inputbuffer.h
+    src/core/blocks.h
+    src/util/compat.h
+    src/core/coords.h
+    src/data/data.h
+    src/core/gameloop.h
+    src/render/gui.h
+    src/data/inputbuffer.h
     src/main.h
-    src/menus.h
-    src/minecraftfont.h
-    src/options.h
-    src/player.h
-    src/player_model.h
-    src/net.h
-    src/terrain.h
-    src/textures.h
-    src/utility.h
-    src/audio.h
-    src/discord_presence.h
-    src/imgui_renderer.h
-    src/loc.h
-    src/gl_renderer.h
-    src/mcpi.h
+    src/ui/menus.h
+    src/render/minecraftfont.h
+    src/data/options.h
+    src/core/player.h
+    src/core/player_model.h
+    src/net/net.h
+    src/core/terrain.h
+    src/render/textures.h
+    src/util/utility.h
+    src/audio/audio.h
+    src/discord/discord_presence.h
+    src/ui/imgui_renderer.h
+    src/data/loc.h
+    src/render/gl_renderer.h
+    src/net/mcpi.h
 )
 
 # Dear ImGui (SDL2 + SDLRenderer2 backends)
@@ -236,7 +236,16 @@ target_include_directories(m4kc PRIVATE
     ${SDL2_NET_INCLUDE_DIRS}/SDL2
     ${SDL2_IMAGE_INCLUDE_DIRS}
     ${SDL2_IMAGE_INCLUDE_DIRS}/SDL2
-    src glad/include)
+    src
+    src/core
+    src/render
+    src/ui
+    src/net
+    src/audio
+    src/data
+    src/discord
+    src/util
+    glad/include)
 target_link_libraries(m4kc PRIVATE imgui ${SDL2_LIBRARIES} ${SDL2_NET_LIBRARIES} ${SDL2_IMAGE_LIBRARIES})
 
 # OpenGL

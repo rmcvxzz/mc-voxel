@@ -37,6 +37,9 @@
  * ---------------------------------------------------------------------- */
 static SDL_GLContext  s_glctx  = NULL;
 static SDL_Window    *s_window = NULL;
+static int s_windowW = 0; /* actual current window size - starts at WINDOW_W/H,
+                            * updated by gl_renderer_resize() for fullscreen */
+static int s_windowH = 0;
 
 /* Fullscreen quad */
 static GLuint s_vao  = 0;
@@ -401,8 +404,6 @@ static void upload_atlas(void) {
 extern World world; /* defined in gameloop.c */
 
 static void upload_world(void) {
-    static int s_debugLogged = 0;
-
     /* Centre the volume on the player's chunk */
     int pcx = (int)floor(world.player.pos.x / CHUNK_SIZE) - CHUNKARR_RAD;
     int pcy = (int)floor(world.player.pos.y / CHUNK_SIZE) - CHUNKARR_RAD;
@@ -414,14 +415,9 @@ static void upload_world(void) {
 
     memset(s_worldBuf, 0, sizeof(s_worldBuf));
 
-    int loadedChunks = 0;
-    int skippedOOB   = 0;
-    int nonAirBlocks  = 0;
-
     for (int ci = 0; ci < CHUNKARR_SIZE; ci++) {
         Chunk *ch = &world.chunk[ci];
         if (!ch->loaded || !ch->blocks) continue;
-        loadedChunks++;
 
         /* Chunk world-space origin */
         int wx = ch->center.x - CHUNK_SIZE / 2;
@@ -437,7 +433,7 @@ static void upload_world(void) {
         if (ox < 0 || oy < 0 || oz < 0 ||
             ox + CHUNK_SIZE > WORLD_TEX_SIZE ||
             oy + CHUNK_SIZE > WORLD_TEX_SIZE ||
-            oz + CHUNK_SIZE > WORLD_TEX_SIZE) { skippedOOB++; continue; }
+            oz + CHUNK_SIZE > WORLD_TEX_SIZE) continue;
 
         for (int bz = 0; bz < CHUNK_SIZE; bz++)
         for (int by = 0; by < CHUNK_SIZE; by++)
@@ -447,17 +443,7 @@ static void upload_world(void) {
                       (oy + by) * WORLD_TEX_SIZE +
                       (oz + bz) * WORLD_TEX_SIZE * WORLD_TEX_SIZE;
             s_worldBuf[idx] = b;
-            if (b != 0) nonAirBlocks++;
         }
-    }
-
-    if (!s_debugLogged) {
-        printf("[gl_renderer] upload_world: chunks=%d/%d loaded, %d skipped(OOB), "
-               "nonAirBlocks=%d, origin=(%d,%d,%d), playerPos=(%.1f,%.1f,%.1f)\n",
-               loadedChunks, CHUNKARR_SIZE, skippedOOB, nonAirBlocks,
-               s_originX, s_originY, s_originZ,
-               world.player.pos.x, world.player.pos.y, world.player.pos.z);
-        s_debugLogged = 1;
     }
 
     glBindTexture(GL_TEXTURE_3D, s_worldTex);
@@ -473,6 +459,8 @@ static void upload_world(void) {
  * ---------------------------------------------------------------------- */
 int gl_renderer_init(SDL_Window *window) {
     s_window = window;
+    s_windowW = WINDOW_W;
+    s_windowH = WINDOW_H;
 
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
@@ -596,10 +584,16 @@ int gl_renderer_init(SDL_Window *window) {
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    glViewport(0, 0, WINDOW_W, WINDOW_H);
+    glViewport(0, 0, s_windowW, s_windowH);
     printf("[gl_renderer] init OK  world=%d^3  atlas=%dx%d\n",
            WORLD_TEX_SIZE, ATLAS_W, ATLAS_H);
     return 0;
+}
+
+void gl_renderer_resize(int width, int height) {
+    if (width <= 0 || height <= 0) return;
+    s_windowW = width;
+    s_windowH = height;
 }
 
 void gl_renderer_quit(void) {
@@ -793,23 +787,9 @@ int gl_renderer_frame(void *inputs_v) {
     glDrawArrays(GL_TRIANGLES, 0, 6);
     glBindVertexArray(0);
 
-    {
-        static int s_pixelLogged = 0;
-        if (!s_pixelLogged) {
-            GLenum err = glGetError();
-            GLenum fboStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-            uint8_t px[4] = {0};
-            glReadPixels(BUFFER_W / 2, BUFFER_H / 2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
-            printf("[gl_renderer] raycast FBO check: glError=0x%x fboStatus=0x%x "
-                   "prog=%u centerPixelRGBA=(%d,%d,%d,%d)\n",
-                   err, fboStatus, s_prog, px[0], px[1], px[2], px[3]);
-            s_pixelLogged = 1;
-        }
-    }
-
     /* --- Back to the window, upscale the raycast result with a cheap nearest blit --- */
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glViewport(0, 0, WINDOW_W, WINDOW_H);
+    glViewport(0, 0, s_windowW, s_windowH);
     glClear(GL_COLOR_BUFFER_BIT);
     glUseProgram(s_blitProg);
     glActiveTexture(GL_TEXTURE0);
@@ -821,6 +801,26 @@ int gl_renderer_frame(void *inputs_v) {
     glBindVertexArray(0);
 
     /* --- Composite software surface on top (HUD, popups, etc.) --- */
+    /* Fit the HUD at the buffer's native aspect ratio, centered, instead of
+     * stretching it to fill the full (possibly differently-shaped) window -
+     * keeps text/buttons proportioned rather than warped on fullscreen at an
+     * aspect ratio the 214x120 buffer wasn't designed for. */
+    {
+        float bufferAspect = (float)BUFFER_W / (float)BUFFER_H;
+        float windowAspect = (float)s_windowW / (float)s_windowH;
+        int hudW, hudH;
+        if (windowAspect > bufferAspect) {
+            hudH = s_windowH;
+            hudW = (int)(hudH * bufferAspect);
+        } else {
+            hudW = s_windowW;
+            hudH = (int)(hudW / bufferAspect);
+        }
+        int hudX = (s_windowW - hudW) / 2;
+        int hudY = (s_windowH - hudH) / 2;
+        glViewport(hudX, hudY, hudW, hudH);
+    }
+
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glUseProgram(s_blitProg);

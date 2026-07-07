@@ -6,6 +6,7 @@ typedef struct {
         int    drawDistance;
         int    trapMouse;
         int    highGfx;
+        int    fullscreen;
         double fov;
         InputBuffer username;
         char   lang[8];
