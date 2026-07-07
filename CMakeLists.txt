@@ -47,6 +47,12 @@ else()
     if(NOT SDL2_FOUND)
         find_package(SDL2 REQUIRED)
     endif()
+    if(SDL2_LIBRARIES)
+        # SDL2main is a Windows/WinMain-entry-point concern - some pkg-config
+        # packaging (e.g. Homebrew) lists it as a dependency without actually
+        # shipping the archive, breaking the link. Safe to drop outside Windows.
+        list(REMOVE_ITEM SDL2_LIBRARIES SDL2main)
+    endif()
 endif()
 
 # SDL2_net finding - bundled in win/

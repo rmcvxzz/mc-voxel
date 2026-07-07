@@ -128,6 +128,11 @@ int main(int argc, char *argv[]) {
 
 	if (options.fullscreen) {
 		SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+		if (g_use_opengl) {
+			int w, h;
+			SDL_GL_GetDrawableSize(window, &w, &h);
+			gl_renderer_resize(w, h);
+		}
 	}
 
 	loc_scan_langs();
@@ -165,6 +170,11 @@ int main(int argc, char *argv[]) {
 			SDL_SetWindowFullscreen(window,
 				options.fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
 			prevFullscreen = options.fullscreen;
+			if (g_use_opengl) {
+				int w, h;
+				SDL_GL_GetDrawableSize(window, &w, &h);
+				gl_renderer_resize(w, h);
+			}
 		}
 		uint32_t frameStartTime = SDL_GetTicks();
 
