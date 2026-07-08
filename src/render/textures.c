@@ -1,209 +1,70 @@
-#include <math.h>
-#include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
+#include <SDL2/SDL_image.h>
 #include "textures.h"
 
 int textures[TEXTURES_SIZE] = { 0 };
-const uint16_t cobbleCracks[BLOCK_TEXTURE_H] = {
-        0b0000001110000100,
-        0b0010110010000110,
-        0b1011100011001110,
-        0b1110100011110011,
-        0b0011000110001001,
-        0b0001000100001111,
-        0b0001111110000001,
-        0b0011001111100110,
-        0b1110001000111100,
-        0b0100010100011000,
-        0b1000010000011100,
-        0b0100110000110111,
-        0b0011111011000010,
-        0b1100001010000001,
-        0b0010000111000011,
-        0b0000111100111110,
+
+static const char* blockFileNames[NUMBER_OF_BLOCKS] = {
+    [BLOCK_AIR]         = NULL,
+    [BLOCK_STONE]       = "stone.png",
+    [BLOCK_SAND]        = "sand.png",
+    [BLOCK_GRAVEL]      = "gravel.png",
+    [BLOCK_BRICKS]      = "bricks.png",
+    [BLOCK_COBBLESTONE] = "cobblestone.png",
+    [BLOCK_WATER]       = "water.png",
+    [BLOCK_WOOD]        = "wood.png",
+    [BLOCK_GRASS]       = "grass.png",
+    [BLOCK_LEAVES]      = "leaves.png",
+    [BLOCK_TALL_GRASS]  = "tall_grass.png",
+    [BLOCK_PLAYER_HEAD] = "player_head.png",
+    [BLOCK_PLAYER_BODY] = "player_body.png"
 };
 
-static void genTexture (Block);
-static inline float determ2d (float, float);
-
-/* genTextures
- * Takes in a seed and an array where the textures should go.
- * Generates game textures in that array.
- */
 void genTextures (unsigned int seed) {
-        srand(seed);
+        (void)seed;
+        char path[256];
 
         for (Block blockId = 1; blockId < NUMBER_OF_BLOCKS; blockId++) {
-                genTexture(blockId);
+                if (!blockFileNames[blockId]) continue;
+
+                snprintf(path, sizeof(path), "assets/textures/blocks/%s", blockFileNames[blockId]);
+
+                SDL_Surface* loadedSurface = IMG_Load(path);
+                if (!loadedSurface) {
+                        fprintf(stderr, "[Texture Error] SDL_image failed to load %s: %s\n", path, IMG_GetError());
+                        continue;
+                }
+
+                SDL_Surface* rgbaSurface = SDL_ConvertSurfaceFormat(loadedSurface, SDL_PIXELFORMAT_RGBA32, 0);
+                SDL_FreeSurface(loadedSurface);
+
+                if (!rgbaSurface) {
+                        fprintf(stderr, "[Texture Error] Conversion failed for %s: %s\n", path, SDL_GetError());
+                        continue;
+                }
+
+                int width = rgbaSurface->w;
+                int height = rgbaSurface->h;
+                uint32_t* pixels = (uint32_t*)rgbaSurface->pixels;
+
+                for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                        uint32_t pixel = pixels[x + y * width];
+
+                        uint8_t r, g, b, a;
+                        SDL_GetRGBA(pixel, rgbaSurface->format, &r, &g, &b, &a);
+
+                        int finalColor = 0;
+                        if (a > 0) {
+                                finalColor = (r << 16) | (g << 8) | b;
+                        }
+
+                        textures[x + y * BLOCK_TEXTURE_H + blockId * BLOCK_TEXTURE_W * BLOCK_TEXTURE_H * 3] = finalColor;
+                }
+                }
+
+                SDL_FreeSurface(rgbaSurface);
         }
-}
-
-/* genTexture
- * Generates a texture for the given block ID.
- */
-static void genTexture (Block blockId) {
-        int brightness = 255 - randm(96);
-        for (int y = 0; y < BLOCK_TEXTURE_H * 3; y++)
-        for (int x = 0; x < BLOCK_TEXTURE_W;     x++) {
-                int baseColor  = 0x966C4A;
-                int noiseFloor = 255;
-                int noiseScale = 96;
-
-                if (blockId == BLOCK_SAND)   { noiseScale = 48;  }
-                if (blockId == BLOCK_GRAVEL) { noiseScale = 140; }
-
-                if (
-                        blockId == BLOCK_GRASS &&
-                        y < (x * x * (3 + x) * 81 >> 2 & 0x3) + 18
-                ) {
-                        baseColor = 0x6AAA40;
-                } else if (
-                        blockId == BLOCK_GRASS &&
-                        y < (x * x * (3 + x) * 81 >> 2 & 0x3) + 19
-                ) {
-                        brightness = brightness * 2 / 3;
-                }
-
-                int needAltNoise =
-                        blockId == BLOCK_STONE ||
-                        blockId == BLOCK_WATER;
-                if (!needAltNoise || randm(3) == 0) {
-                        brightness = noiseFloor - randm(noiseScale);
-                }
-
-                if (blockId == BLOCK_WOOD) {
-                        baseColor = 0x675231;
-                        if (
-                                x > 0 && x < 15 &&
-                                ((y > 0 && y < 15) || (y > 32 && y < 47))
-                        ) {
-                                baseColor = 0xBC9862;
-                                int i6 = x - 7;
-                                int i7 = (y & 0xF) - 7;
-
-                                if (i6 < 0)  i6 = 1 - i6;
-                                if (i7 < 0)  i7 = 1 - i7;
-                                if (i7 > i6) i6 = i7;
-
-                                brightness = 196 - randm(32) + i6 % 3 * 32;
-                        } else if (randm(2) == 0) {
-                                brightness =
-                                        brightness *
-                                        (150 - (x & 0x1) * 100) / 100;
-                        }
-                }
-
-                switch (blockId) {
-                case BLOCK_STONE:
-                        baseColor = 0x7F7F7F;
-                        break;
-                        
-                case BLOCK_SAND:
-                        baseColor = 0xD8CE9B;
-                        break;
-                        
-                case BLOCK_GRAVEL:
-                        baseColor = 0xAAAAAA;
-                        break;
-                        
-                case BLOCK_BRICKS:
-                        baseColor = 0xB53A15;
-                        if ((x + y / 4 * 4) % 8 == 0 || y % 4 == 0)
-                        baseColor = 12365733; 
-                        break;
-                        
-                case BLOCK_COBBLESTONE:
-                        baseColor = 0x999999;
-                        brightness -=
-                                ((cobbleCracks[y & 0xF] >> x) & 1) * 128;
-                        break;
-
-                case BLOCK_WATER:
-                        baseColor = 0x3355EE;
-                        break;
-                        
-                case BLOCK_PLAYER_HEAD:
-                        brightness = 255;
-                        if (
-                                dist2d(x, y % BLOCK_TEXTURE_H, 8, 8) > 6.2 ||
-                                (y / 16) % 3 == 2
-                        ) {
-                                baseColor = 0x000000;
-                        } else {
-                                baseColor = 0xFFFFFF;
-                                brightness -= dist2d (
-                                        x, y % BLOCK_TEXTURE_H,
-                                        8, 2) * 8;
-                        }
-                        break;
-                        
-                case BLOCK_PLAYER_BODY:
-                        brightness = 255;
-                        if (
-                                (dist2d(x, y % BLOCK_TEXTURE_H, 8, 16) > 12.2 ||
-                                (y / 16) % 3 != 1) &&
-                                (y / 16) % 3 != 2
-                        ) {
-                                baseColor = 0x000000;
-                        } else {
-                                baseColor = 0xFFFFFF;
-                                brightness -= dist2d (
-                                        x, y % BLOCK_TEXTURE_H,
-                                        8, 2) * 8;
-                        }
-                        break;
-                
-                case BLOCK_LEAVES:
-                        baseColor = 0x50D937;
-
-                        // Make transparent gaps between leaves
-                        if (randm(2) == 0) {
-                                baseColor = 0;
-                                brightness = 255;
-                        }
-                        break;
-                        
-                case BLOCK_TALL_GRASS:
-                        baseColor = 0x50D937;
-
-                        // Make transparent gaps between blades of grass, and
-                        // make top transparent
-                        if (
-                                determ2d(x, y / 3) < 0.2 ||
-                                y < BLOCK_TEXTURE_H      ||
-                                randm(y - BLOCK_TEXTURE_H + 1) < 2
-                        ) {
-                                baseColor = 0;
-                                brightness = 255;
-                        }
-                        break;
-                }
-
-                // Darken bottom of blocks. We need finalBrightness because
-                // brightness can carry over between pixels.
-                int finalBrightness = brightness;
-                if (y >= BLOCK_TEXTURE_H * 2) {
-                        finalBrightness /= 2;
-                }
-
-                // Apply brightness value
-                int finalColor =
-                        (baseColor >> 16 & 0xFF) * finalBrightness / 255 << 16 |
-                        (baseColor >> 8  & 0xFF) * finalBrightness / 255 << 8  |
-                        (baseColor       & 0xFF) * finalBrightness / 255;
-                
-                textures [
-                        x +
-                        y * BLOCK_TEXTURE_H +
-                        blockId * BLOCK_TEXTURE_W * BLOCK_TEXTURE_H * 3
-                ] = finalColor;
-        }
-}
-
-/* determ2d
- * A deterministic pseudorandom noise generator separate from randm. Takes in
- * an x and y value.
- */
-static inline float determ2d (float x, float y) {
-        return fmod(fabs(tan(9 * (float)x + 1 + y)), 1);
 }

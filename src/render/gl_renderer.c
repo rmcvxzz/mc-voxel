@@ -688,6 +688,7 @@ int gl_renderer_frame(void *inputs_v) {
 
     if (!isGameplay) {
         /* Pure blit - title/loading/world select screens */
+        glViewport(0, 0, s_windowW, s_windowH);
         glUseProgram(s_blitProg);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, s_frameTex);

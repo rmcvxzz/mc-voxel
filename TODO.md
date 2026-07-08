@@ -3,32 +3,32 @@
 ### NOTE:
 
 - [ ] = NOT WORKED ON YET/BIG W.I.P
-- [-] = HALFWAY FINISHED/NOT BUG TESTED
 - [x] = FINISHED/BUG TESTED
-- [?] = THINKING ABOUT IT IF I SHOULD USE OR NOT
 
 ## Internal category
 
 - [x] Discord RPC
 - [x] Debug support
-- ~~[-] Android support (really big, 90% wont do it)~~ Android support is scrapped.
+- ~~[ ] Android support (really big, 90% wont do it)~~ Android support is scrapped.
 - [x] Raycasting replacement with shaders and GLSL
 - [ ] Plugin support
 - [x] Debug support
-- [ ] Dedicated server (really big, might not finish it)
+- [x] Dedicated server (TerraServer)
 - [x] Audio support (using miniaudio)
 - [x] MCPI API Library support
-- [-] Fullscreen support
-- [-] External block textures (textures are finished but not implemented)
+- [ ] Fullscreen support
+- [ ] External block textures (system implemented, still needs some fixin)
 - [ ] Demo recording
 - [x] Linux support (wayyy easy because the sdl2 libs must be installed on the user's end, no included/linked libs)
-- [-] macOS support
+- [-] macOS support (untested)
 
 ## Gameplay category
 
-- [-] Audio support (only clicking on menu)
+- [x] Audio support (system implemented, only clicking on menu)
+- [x] Panorama on menu (only one image, planning to be a chunk of world)
+- [ ] Real-time World sync with user's system clock
 - [ ] Biome generation (needs reworking terrain generation)
-- [-] Actual player models with textures
+- [ ] Actual player models with textures
 - [x] Localization (system implemented, only 3 languages supported)
 - [ ] Infinite world generation (needs reworking some stuff)
 - [ ] Survival mode

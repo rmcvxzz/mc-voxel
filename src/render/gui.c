@@ -1,5 +1,6 @@
 #include "gui.h"
 #include "blocks.h"
+#include "SDL_image.h"
 
 /* NOTE: BUFFER_HALF_W/H and WINDOW_W/H are written as literal expressions
  * (not BUFFER_W/2 etc.) because MSVC requires true constant expressions for
@@ -355,20 +356,32 @@ int drawWorldListItem(SDL_Renderer *renderer, data_WorldListItem *item, int x, i
 	return hover;
 }
 
+static SDL_Texture *s_dirtBgTex = NULL;
+
 /* dirtBg
  * Draws a dirt textured background
  */
 void dirtBg(SDL_Renderer *renderer) {
-	int color;
-	for (int y = 0; y < BUFFER_H; y++) {
-		for (int x = 0; x < BUFFER_W; x++) {
-			color = textures[(x & 0xF) + (y & 0xF) * 16 + BLOCK_DIRT * 256 * 3];
-
-			SDL_SetRenderDrawColor(renderer, (color >> 16 & 0xFF) >> 1, (color >> 8 & 0xFF) >> 1,
-			                       (color & 0xFF) >> 1, 255);
-
-			SDL_RenderDrawPoint(renderer, x, y);
+	if (!s_dirtBgTex) {
+		s_dirtBgTex = IMG_LoadTexture(renderer, "assets/textures/blocks/dirt.png");
+		if (s_dirtBgTex) {
+			SDL_SetTextureColorMod(s_dirtBgTex, 127, 127, 127);
+		} else {
+			printf("Dirt background load failed: %s\n", IMG_GetError());
 		}
+	}
+
+	if (s_dirtBgTex) {
+		SDL_Rect src = {0, 0, 16, 16};
+		for (int y = 0; y < BUFFER_H; y += 16) {
+			for (int x = 0; x < BUFFER_W; x += 16) {
+				SDL_Rect dest = {x, y, 16, 16};
+				SDL_RenderCopy(renderer, s_dirtBgTex, &src, &dest);
+			}
+		}
+	} else {
+		SDL_SetRenderDrawColor(renderer, 32, 32, 32, 255);
+		SDL_RenderClear(renderer);
 	}
 }
 

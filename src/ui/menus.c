@@ -10,6 +10,7 @@
 #include "loc.h"
 
 static SDL_Texture *s_logo = NULL;
+static SDL_Texture *s_panorama = NULL;
 
 static void loadLogo(SDL_Renderer *renderer) {
         if (s_logo)
@@ -17,6 +18,51 @@ static void loadLogo(SDL_Renderer *renderer) {
         s_logo = IMG_LoadTexture(renderer, "assets/textures/menu/logo.png");
         if (!s_logo)
                 printf("Logo load failed: %s\n", IMG_GetError());
+}
+
+static void loadPanorama(SDL_Renderer *renderer) {
+        if (s_panorama)
+                SDL_DestroyTexture(s_panorama);
+
+        SDL_Surface *surface = IMG_Load("assets/textures/menu/panorama.bmp");
+        if (!surface) {
+                printf("Panorama load failed: %s\n", IMG_GetError());
+                return;
+        }
+
+        SDL_Surface *blurred = SDL_CreateRGBSurfaceWithFormat(0, surface->w, surface->h, 32, surface->format->format);
+        if (blurred) {
+                uint32_t *src = (uint32_t *)surface->pixels;
+                uint32_t *dst = (uint32_t *)blurred->pixels;
+                int w = surface->w;
+                int h = surface->h;
+
+                for (int y = 0; y < h; y++) {
+                        for (int x = 0; x < w; x++) {
+                                int r_sum = 0, g_sum = 0, b_sum = 0, a_sum = 0, count = 0;
+                                for (int ky = -2; ky <= 2; ky++) {
+                                        for (int kx = -2; kx <= 2; kx++) {
+                                                int px = x + kx;
+                                                int py = y + ky;
+                                                if (px >= 0 && px < w && py >= 0 && py < h) {
+                                                        uint32_t pixel = src[py * w + px];
+                                                        uint8_t r, g, b, a;
+                                                        SDL_GetRGBA(pixel, surface->format, &r, &g, &b, &a);
+                                                        r_sum += r; g_sum += g; b_sum += b; a_sum += a;
+                                                        count++;
+                                                }
+                                        }
+                                }
+                                dst[y * w + x] = SDL_MapRGBA(blurred->format, r_sum / count, g_sum / count, b_sum / count, a_sum / count);
+                        }
+                }
+                s_panorama = SDL_CreateTextureFromSurface(renderer, blurred);
+                SDL_FreeSurface(blurred);
+        } else {
+                s_panorama = SDL_CreateTextureFromSurface(renderer, surface);
+        }
+
+        SDL_FreeSurface(surface);
 }
 
 static int menu_optionsMain(SDL_Renderer *, Inputs *);
@@ -112,11 +158,23 @@ int state_splash(SDL_Renderer *renderer, Inputs *inputs, int *gameState) {
         return 0;
 }
 
+void pmBg(SDL_Renderer *renderer) {
+        if (!s_panorama) {
+                loadPanorama(renderer);
+        }
+        if (s_panorama) {
+                SDL_RenderCopy(renderer, s_panorama, NULL, NULL);
+        } else {
+                SDL_SetRenderDrawColor(renderer, 64, 64, 64, 255);
+                SDL_RenderClear(renderer);
+        }
+}
+
 int state_title(SDL_Renderer *renderer, Inputs *inputs, int *gameState) {
         inputs->mouse.x /= BUFFER_SCALE;
         inputs->mouse.y /= BUFFER_SCALE;
 
-        dirtBg(renderer);
+        pmBg(renderer);
         white(renderer);
         loadLogo(renderer);
         if (s_logo) {
@@ -132,12 +190,12 @@ int state_title(SDL_Renderer *renderer, Inputs *inputs, int *gameState) {
         }
 
 #ifdef __ANDROID__
-        shadowStr(renderer, "[TEMP] 0.1.0", 1, BUFFER_H - 9);
+        shadowStr(renderer, "scrapped", 1, BUFFER_H - 9);
 #else
 #ifdef small
-        shadowStr(renderer, "[DEV] 0.1.0", 1, BUFFER_H - 9);
+        shadowStr(renderer, "smolver v0.1.7", 1, BUFFER_H - 9);
 #else
-        shadowStr(renderer, "0.1.0", 1, BUFFER_H - 9);
+        shadowStr(renderer, "v0.1.7", 1, BUFFER_H - 9);
 #endif
 #endif
 
@@ -183,7 +241,7 @@ void state_multiplayer(SDL_Renderer *renderer, Inputs *inputs, int *gameState) {
         inputs->mouse.x /= BUFFER_SCALE;
         inputs->mouse.y /= BUFFER_SCALE;
 
-        dirtBg(renderer);
+        pmBg(renderer);
         white(renderer);
         drawBig(renderer, T("MAIN_MENU_MULTIPLAYER"), BUFFER_HALF_W, 16);
 
@@ -234,7 +292,7 @@ void state_selectWorld(SDL_Renderer *renderer, Inputs *inputs, int *gameState, W
         inputs->mouse.x /= BUFFER_SCALE;
         inputs->mouse.y /= BUFFER_SCALE;
 
-        dirtBg(renderer);
+        pmBg(renderer);
         tblack(renderer);
         SDL_RenderFillRect(renderer, &listBackground);
         SDL_RenderDrawLine(renderer, 0, BUFFER_H - 29, BUFFER_W, BUFFER_H - 29);
@@ -337,7 +395,7 @@ void state_serverList(SDL_Renderer *renderer, Inputs *inputs, int *gameState, Wo
         inputs->mouse.x /= BUFFER_SCALE;
         inputs->mouse.y /= BUFFER_SCALE;
 
-        dirtBg(renderer);
+        pmBg(renderer);
         white(renderer);
         drawBig(renderer, T("SERVER_JOIN_TITLE"), BUFFER_HALF_W, 16);
 
@@ -392,7 +450,7 @@ void state_newWorld(SDL_Renderer *renderer, Inputs *inputs, int *gameState, Worl
         inputs->mouse.x /= BUFFER_SCALE;
         inputs->mouse.y /= BUFFER_SCALE;
 
-        dirtBg(renderer);
+        pmBg(renderer);
 
         if (whichInput == 0) {
                 manageInputBuffer(&nameInput, inputs);
@@ -522,7 +580,7 @@ void state_hostServer(SDL_Renderer *renderer, Inputs *inputs, int *gameState, Wo
         inputs->mouse.x /= BUFFER_SCALE;
         inputs->mouse.y /= BUFFER_SCALE;
 
-        dirtBg(renderer);
+        pmBg(renderer);
 
         if (whichInput == 0) {
                 manageInputBuffer(&nameInput, inputs);
@@ -666,7 +724,7 @@ void state_options(SDL_Renderer *renderer, Inputs *inputs, int *gameState) {
         inputs->mouse.x /= BUFFER_SCALE;
         inputs->mouse.y /= BUFFER_SCALE;
 
-        dirtBg(renderer);
+        pmBg(renderer);
 
         if (menu_optionsMain(renderer, inputs)) {
                 *gameState = 0;
@@ -680,7 +738,7 @@ void state_egg(SDL_Renderer *renderer, Inputs *inputs, int *gameState) {
         inputs->mouse.x /= BUFFER_SCALE;
         inputs->mouse.y /= BUFFER_SCALE;
 
-        dirtBg(renderer);
+        pmBg(renderer);
         white(renderer);
         centerStr(renderer, "Go away, this is my house.", BUFFER_HALF_W, BUFFER_HALF_H - 16);
         if (button(renderer, T("COMMON_OK"), BUFFER_HALF_W - 64, BUFFER_HALF_H, 128, inputs->mouse.x,
@@ -698,7 +756,7 @@ int state_err(SDL_Renderer *renderer, Inputs *inputs, char *message) {
         inputs->mouse.x /= BUFFER_SCALE;
         inputs->mouse.y /= BUFFER_SCALE;
 
-        dirtBg(renderer);
+        pmBg(renderer);
         SDL_SetRenderDrawColor(renderer, 255, 128, 128, 255);
         centerStr(renderer, T("ERROR_TITLE"), BUFFER_HALF_W, BUFFER_HALF_H - 20);
         white(renderer);

@@ -21,7 +21,8 @@ BLOCK_MAP = {
     9: "player_head",
     10: "player_body",
     11: "leaves",
-    12: "tall_grass"
+    12: "tall_grass",
+    13: "dirt"
 }
 
 cobbleCracks = [

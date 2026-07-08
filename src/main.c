@@ -34,7 +34,7 @@
  * notice.
  */
 
-/* TerraM4KC 0.1.0
+/* TerraM4KC 0.1.7
  * Credits:
  *  sashakoshka - Creating the base game
  *  rmcvxzz     - Creator of TerraM4KC
@@ -78,7 +78,8 @@ int main(int argc, char *argv[]) {
 	}
 
 	window = SDL_CreateWindow("TerraM4KC", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-	                          WINDOW_W, WINDOW_H, SDL_WINDOW_SHOWN | (g_use_opengl ? SDL_WINDOW_OPENGL : 0));
+	                          WINDOW_W, WINDOW_H, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE |
+	                          (g_use_opengl ? SDL_WINDOW_OPENGL : 0));
 	if (window == NULL) {
 		printf("%s\n", SDL_GetError());
 		goto exit;
